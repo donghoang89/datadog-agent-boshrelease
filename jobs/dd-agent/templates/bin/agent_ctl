@@ -20,8 +20,12 @@ ensure_agent_ownership
 # Hardcoded pidfile
 DD_AGENT_PIDFILE="$TMP_DIR/dd-agent.pid"
 DD_AGENT="$JOB_DIR/packages/dd-agent/bin/agent/agent"
+TRACE_AGENT="$JOB_DIR/packages/dd-agent/embedded/bin/trace-agent"
 
 AGENT_COMMAND="$DD_AGENT start -c $JOB_DIR/config/"
+
+# Create run folder inside $JOB_DIR to host trace_agent pid file
+[ -d $JOB_DIR/run ] || mkdir $JOB_DIR/run
 
 case ${1:-help} in
   start)
@@ -41,6 +45,9 @@ case ${1:-help} in
         2>>$LOG_DIR/$COMPONENT.stderr.log
     ) &
     echo "$(<${PIDFILE}). Done"
+
+    $TRACE_AGENT --config $JOB_DIR/config/datadog.yaml --pid $JOB_DIR/run/trace-agent.pid
+
     ;;
   stop)
     printf_log "Stopping Datadog $COMPONENT: $(<${PIDFILE}). "
@@ -48,6 +55,7 @@ case ${1:-help} in
     kill_and_wait $PIDFILE
     rm -f $PIDFILE
     printf_log "Done"
+    kill $(cat $JOB_DIR/run/trace-agent.pid)
     ;;
   *)
     echo "Usage: $0 {start|stop}"
